@@ -5,6 +5,15 @@ import pickle
 import cv2
 import os
 import xml.etree.ElementTree as ET
+import PySimpleGUI as sg
+import psutil
+
+sg.ChangeLookAndFeel('Black')
+layout = [[sg.Text('')],
+          [sg.Text('', size=(8, 2), font=('Helvetica', 20), justification='center', key='text')]]
+window = sg.Window('Running Timer', no_titlebar=True, auto_size_buttons=False, keep_on_top=True,
+                   grab_anywhere=True).Layout(layout)
+
 
 video_capture = cv2.VideoCapture(0)
 known_face_encodings = [
@@ -16,25 +25,26 @@ known_face_names = [
 
 print("Loading face image(s)")
 for face in os.listdir("./faces"):
-    with open("./faces/"+face+"/info.xml", 'r') as f:
-        xmlraw = f.read()
-        root = ET.fromstring(xmlraw)
-        name = root.find('name').text
-    for file in os.listdir("./faces/"+face):
-        if (file.endswith(".png") or file.endswith(".jpg") or file.endswith(".jpeg")):
-            print("Training "+name, end="", flush=True)
-            tface = face_recognition.load_image_file("./faces/"+face+"/"+str(file))
-            if(face_recognition.face_encodings(tface)):
-                tface_encoded = face_recognition.face_encodings(tface, num_jitters=20)[0]
-                known_face_encodings.append(tface_encoded)
-                known_face_names.append(
-                    {"name": name,
-                        "class": root.find('class').text,
-                        "register": root.find('register').text,
-                        "status": root.find('status').text})
-                print("[DONE]")
-            else:
-                print("[FAIL]")
+    if(face != ".DS_Store"):
+        with open("./faces/"+face+"/info.xml", 'r') as f:
+            xmlraw = f.read()
+            root = ET.fromstring(xmlraw)
+            name = root.find('name').text
+        for file in os.listdir("./faces/"+face):
+            if (file.endswith(".png") or file.endswith(".jpg") or file.endswith(".jpeg")):
+                print("Training "+name, end="", flush=True)
+                tface = face_recognition.load_image_file("./faces/"+face+"/"+str(file))
+                if(face_recognition.face_encodings(tface)):
+                    tface_encoded = face_recognition.face_encodings(tface, num_jitters=200)[0]
+                    known_face_encodings.append(tface_encoded)
+                    known_face_names.append(
+                        {"name": name,
+                            "class": root.find('class').text,
+                            "register": root.find('register').text,
+                            "status": root.find('status').text})
+                    print("[DONE]")
+                else:
+                    print("[FAIL]")
 database = open("database.frdb","wb")
 tostore = {"encodings": known_face_encodings,
 "names": known_face_names}
@@ -56,10 +66,7 @@ while True:
 
     for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
         # See if the face is a match for the known face(s)
-        matches = face_recognition.compare_faces(known_face_encodings, face_encoding, 0.45)
-
-        person = ['Unknown']
-
+        matches = face_recognition.compare_faces(known_face_encodings, face_encoding, 0.38)
         # If a match was found in known_face_encodings, just use the first one.
         if True in matches:
             first_match_index = matches.index(True)
